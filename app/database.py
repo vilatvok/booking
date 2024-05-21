@@ -3,7 +3,11 @@ from typing import Annotated, AsyncGenerator
 from fastapi import Depends
 
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 
 DATABASE_URL = "postgresql+asyncpg://admin:12345@localhost/fastapi"

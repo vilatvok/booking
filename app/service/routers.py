@@ -46,7 +46,7 @@ async def create_service(
     for image in images:
         if image.content_type not in ['image/jpeg', 'image/png']:
             raise HTTPException(400, 'Invalid content type')
-        
+
         path = folder + image.filename
         with open(path, 'wb') as f:
             f.write(await image.read())
@@ -68,7 +68,7 @@ async def get_services(db: session):
     )).all()
 
     services_with_prices = []
-    
+
     for service, prices in query:
         images = (await db.execute(
             select(Image.data).
@@ -88,10 +88,10 @@ async def get_services(db: session):
                 'per_day': prices.per_day,
                 'per_month': prices.per_month,
                 'per_year': prices.per_year,
-            }
+            },
         }
         services_with_prices.append(services)
-    
+
     return services_with_prices
 
 
@@ -99,14 +99,15 @@ async def get_services(db: session):
 async def get_service(service_id: int, db: session):
     service = (await db.execute(
         select(
-            Service, 
-            User.username, 
-            Prices, 
-            func.round(func.avg(Feedback.rating), 1).label('avg_rating')
+            Service,
+            User.username,
+            Prices,
+            func.round(func.avg(Feedback.rating), 1).label('avg_rating'),
         ).join(Service.owner).
         join(Service.prices).
         join(Service.feedbacks, isouter=True).
-        group_by(Service, User.username, Prices).where(Service.id == service_id)
+        group_by(Service, User.username, Prices).
+        where(Service.id == service_id)
     )).first()
 
     if not service:
@@ -133,7 +134,7 @@ async def get_service(service_id: int, db: session):
 
     images = [
         {
-            'data': image.data
+            'data': image.data,
         } for image in images
     ]
 
@@ -148,7 +149,7 @@ async def get_service(service_id: int, db: session):
             'user': feedback.user.username,
             'rating': feedback.rating,
             'text': feedback.text,
-            'created': feedback.created
+            'created': feedback.created,
         } for feedback in feedbacks
     ]
     result = {
@@ -162,7 +163,7 @@ async def get_service(service_id: int, db: session):
         'images': images,
         'prices': prices,
         'avg_rating': avg_rating if avg_rating else 0,
-        'feedbacks': feedbacks
+        'feedbacks': feedbacks,
     }
     return result
 
@@ -170,9 +171,9 @@ async def get_service(service_id: int, db: session):
 @router.patch('/{service_id}/update', status_code=status.HTTP_202_ACCEPTED)
 async def update_service(
     service_id: int,
-    service: schemas.ServiceUpdate, 
+    service: schemas.ServiceUpdate,
     db: session,
-    user: Annotated[User | Enterprise, current_user]
+    user: Annotated[User | Enterprise, current_user],
 ):
     service_ = (await db.execute(
         select(Service).
@@ -184,7 +185,7 @@ async def update_service(
 
     user_id = user.get('user_id')
     enterprise_id = user.get('enter_id')
-    
+
     if user_id:
         if user_id != service_.owner_id:
             raise permission_required
@@ -197,7 +198,7 @@ async def update_service(
         where(Service.id == service_id).
         values(service.model_dump(exclude=['prices'], exclude_unset=True))
     )
-    
+
     if service.prices:
         await db.execute(
             update(Prices).
@@ -211,8 +212,8 @@ async def update_service(
 @router.delete('/{service_id}/delete', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_service(
     service_id: int,
-    db: session, 
-    user: Annotated[User | Enterprise, current_user]
+    db: session,
+    user: Annotated[User | Enterprise, current_user],
 ):
     service = (await db.execute(
         select(Service).
@@ -221,10 +222,10 @@ async def delete_service(
 
     if not service:
         raise not_found
-    
+
     user_id = user.get('user_id')
     enterprise_id = user.get('enter_id')
-    
+
     if user_id:
         if user_id != service.owner_id:
             raise permission_required
@@ -237,12 +238,15 @@ async def delete_service(
     return {'status': 'Ok'}
 
 
-@router.post('/{service_id}/feedback/create', status_code=status.HTTP_201_CREATED)
+@router.post(
+    '/{service_id}/feedback/create',
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_feedback(
     service_id: int,
     feedback: schemas.FeedbackCreate,
     user: Annotated[User | Enterprise, current_user],
-    db: session
+    db: session,
 ):
     user_id = user.get('user_id')
     try:
@@ -252,7 +256,7 @@ async def create_feedback(
                 {
                     **feedback.model_dump(),
                     'user_id': user_id,
-                    'service_id': service_id
+                    'service_id': service_id,
                 }
             )
         )

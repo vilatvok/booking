@@ -15,14 +15,14 @@ class User(Base):
     avatar = sa.Column(sa.String, default='app/static/images/user_logo.png')
     email = sa.Column(sa.String)
     service = relationship(
-        'Service', 
-        back_populates='owner', 
-        cascade='all, delete-orphan'
+        'Service',
+        back_populates='owner',
+        cascade='all, delete-orphan',
     )
     feedbacks = relationship(
-        'Feedback', 
-        back_populates='user', 
-        cascade='all, delete-orphan'
+        'Feedback',
+        back_populates='user',
+        cascade='all, delete-orphan',
     )
 
 

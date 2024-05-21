@@ -22,10 +22,10 @@ password_hash = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
 
 async def authenticate_user(
-    password: str, 
-    db: session, 
-    username: str = None, 
-    id: int = None
+    password: str,
+    db: session,
+    username: str = None,
+    user_id: int = None,
 ):
     if username:
         query = (await db.execute(
@@ -35,12 +35,12 @@ async def authenticate_user(
     else:
         query = (await db.execute(
             select(User).
-            where(User.id == id)
+            where(User.id == user_id)
         )).scalar()
     if not query or not password_hash.verify(password, query.password):
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, 
-            'Incorrect username or password'
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Incorrect username or password',
         )
     return query
 
@@ -51,13 +51,13 @@ async def authenticate_enterprise(uuid: UUID, password: str, db: session):
             select(Enterprise).
             where(Enterprise.id == UUID(uuid))
         )).scalar()
-    except:
+    except IntegrityError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, 'Incorrect uuid')
     else:
         if not query or not password_hash.verify(password, query.password):
             raise HTTPException(
-                status.HTTP_400_BAD_REQUEST, 
-                'Incorrect uuid or password'
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='Incorrect uuid or password',
             )
         return query
 
@@ -67,16 +67,16 @@ def validation_password(password: str):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, 'Too short password')
     if str(password).isalpha() or str(password).isdigit():
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, 
-            'Password must contain digits and characters'
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Password must contain digits and characters',
         )
-    
+
 
 def create_token(data: dict):
     to_encode = data.copy()
     time_exp = datetime.utcnow() + timedelta(minutes=10)
     to_encode.update({'exp': time_exp})
-    encoded = jwt.encode(to_encode, SECRET, algorithm='HS256')
+    encoded = jwt.encode(to_encode, key=SECRET, algorithm='HS256')
     return encoded
 
 
@@ -88,10 +88,10 @@ def create_login_response(token: str):
 
 
 async def create_register_response(
-    obj: UserRegister | EnterpriseRegister, 
-    avatar: str, 
+    obj: UserRegister | EnterpriseRegister,
+    avatar: str,
     class_name: str,
-    db: session, 
+    db: session,
 ):
     if avatar.content_type not in ['image/jpeg', 'image/png']:
         raise HTTPException(400, 'Invalid content type')
@@ -108,7 +108,7 @@ async def create_register_response(
         folder = 'app/users/media/enterprises/'
         path = folder + avatar.filename
         ava = {'logo': path}
-    
+
     with open(path, 'wb') as f:
         f.write(await avatar.read())
 
@@ -119,16 +119,16 @@ async def create_register_response(
             insert(obj_class).
             values(
                 {
-                    **obj.model_dump(exclude=['password']), 
-                    **ava, 
-                    'password': password
+                    **obj.model_dump(exclude=['password']),
+                    **ava,
+                    'password': password,
                 }
             )
         )
     except IntegrityError:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=msg
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=msg,
         )
     else:
         await db.commit()

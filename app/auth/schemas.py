@@ -26,7 +26,7 @@ class UserRegister(BaseUser):
 
     class Config:
         orm_mode = True
-        
+
 
 class UserLogin(BaseModel):
     username: str
@@ -70,4 +70,3 @@ class Enterprise(BaseModel):
 class EnterpriseLogin(BaseModel):
     id: str
     password: str
-    

@@ -20,7 +20,7 @@ class Rate(EnumBase):
     three = 3
     four = 4
     five = 5
-    
+
 
 class IntEnum(TypeDecorator):
     """
@@ -41,7 +41,7 @@ class IntEnum(TypeDecorator):
 
     def process_result_value(self, value, dialect):
         return self._enumtype(value)
-    
+
 
 class Image(BaseModel):
     data: str

@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+
 from sqlalchemy.orm import relationship
 
 from datetime import datetime
@@ -12,7 +13,10 @@ class Service(Base):
     __tablename__ = 'service'
 
     id = sa.Column(sa.Integer, primary_key=True)
-    owner_id = sa.Column(sa.Integer, sa.ForeignKey(User.id, ondelete='CASCADE'))
+    owner_id = sa.Column(
+        sa.Integer,
+        sa.ForeignKey(User.id, ondelete='CASCADE'),
+    )
     owner = relationship('User', back_populates='service')
     name = sa.Column(sa.String, nullable=False)
     description = sa.Column(sa.Text, nullable=False)
@@ -22,15 +26,17 @@ class Service(Base):
     images = relationship(
         'Image',
         back_populates='service',
-        cascade='all, delete-orphan')
+        cascade='all, delete-orphan',
+    )
     prices = relationship(
         'Prices',
         back_populates='service',
-        cascade='all, delete-orphan')
+        cascade='all, delete-orphan',
+    )
     feedbacks = relationship(
-        'Feedback', 
-        back_populates='service', 
-        cascade='all, delete-orphan'
+        'Feedback',
+        back_populates='service',
+        cascade='all, delete-orphan',
     )
 
 
@@ -40,40 +46,40 @@ class Image(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     service_id = sa.Column(
         sa.Integer,
-        sa.ForeignKey(Service.id, ondelete='CASCADE')
+        sa.ForeignKey(Service.id, ondelete='CASCADE'),
     )
     data = sa.Column(sa.String, nullable=False)
     service = relationship('Service', back_populates='images')
 
-    
+
 class Prices(Base):
     __tablename__ = 'prices'
 
     id = sa.Column(sa.Integer, primary_key=True)
     service_id = sa.Column(
-        sa.Integer, 
-        sa.ForeignKey(Service.id, ondelete='CASCADE')
+        sa.Integer,
+        sa.ForeignKey(Service.id, ondelete='CASCADE'),
     )
     service = relationship('Service', back_populates='prices')
     per_hour = sa.Column(sa.Float)
     per_day = sa.Column(sa.Float)
     per_month = sa.Column(sa.Float)
     per_year = sa.Column(sa.Float)
-    
+
 
 class Feedback(Base):
     __tablename__ = 'feedback'
-    
+
     id = sa.Column(sa.Integer, primary_key=True)
     service_id = sa.Column(
-        sa.Integer, 
-        sa.ForeignKey(Service.id, ondelete='CASCADE')
+        sa.Integer,
+        sa.ForeignKey(Service.id, ondelete='CASCADE'),
     )
     service = relationship('Service', back_populates='feedbacks')
     user_id = sa.Column(
         sa.Integer,
-        sa.ForeignKey(User.id, ondelete='CASCADE'), 
-        unique=True
+        sa.ForeignKey(User.id, ondelete='CASCADE'),
+        unique=True,
     )
     user = relationship('User', back_populates='feedbacks')
     text = sa.Column(sa.Text, nullable=False)

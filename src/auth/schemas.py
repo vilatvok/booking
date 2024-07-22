@@ -1,12 +1,13 @@
 import json
+
 from uuid import UUID
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, EmailStr
 from datetime import date
 
 
 class BaseUser(BaseModel):
     username: str
-    email: str | None = None
+    email: EmailStr | None = None
 
 
 class User(BaseUser):
@@ -25,15 +26,7 @@ class UserRegister(BaseUser):
         return value
 
     class Config:
-        orm_mode = True
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-    class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PasswordChange(BaseModel):
@@ -42,13 +35,14 @@ class PasswordChange(BaseModel):
 
 
 class Token(BaseModel):
-    token: str
+    access_token: str
+    token_type: str
 
 
 class EnterpriseRegister(BaseModel):
     name: str
     owner: str
-    created: date
+    email: EmailStr
     password: str
 
     @model_validator(mode='before')
@@ -63,10 +57,11 @@ class Enterprise(BaseModel):
     id: UUID
     name: str
     logo: str
+    email: EmailStr
     owner: str
     created: date
 
 
 class EnterpriseLogin(BaseModel):
-    id: str
+    email: EmailStr
     password: str

@@ -2,16 +2,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, HTTPException, status, UploadFile
 
-from sqlalchemy import select, update, and_, delete, insert, func
+from sqlalchemy import select, update, delete, insert, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 
-from app.database import session
-from app.service import schemas
-from app.service.models import Service, Prices, Feedback, Image
-from app.auth.models import User, Enterprise
-from app.auth.dependencies import current_user
-from app.exceptions import not_found, permission_required
+from src.database import session
+from src.services import schemas
+from src.services.models import Service, Price, Feedback, Image
+from src.auth.models import User, Enterprise
+from src.auth.dependencies import current_user
+from src.exceptions import not_found, permission_required
+
 
 router = APIRouter()
 
@@ -19,30 +20,27 @@ router = APIRouter()
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_service(
     db: session,
-    user: Annotated[User | Enterprise, current_user],
-    images: list[UploadFile],
+    owner: Annotated[User | Enterprise, current_user],
     service: Annotated[schemas.ServiceCreate, Body()],
-):
-    user_id = user.get('user_id')
-    enter_id = user.get('enter_id')
-    if user_id:
-        obj = user_id
-    else:
-        obj = enter_id
-
+    images: list[UploadFile],
+):  
+    # insert values in Service table
+    owner_id = owner.id
     stmt = await db.execute(
         insert(Service).
-        values({**service.model_dump(exclude=['prices']), 'owner_id': obj}).
+        values({**service.model_dump(exclude=['prices']), 'owner_id': owner_id}).
         returning(Service)
     )
     stmt_id = stmt.scalar().id
+
+    # add prices
     await db.execute(
-        insert(Prices).
+        insert(Price).
         values({**service.prices.model_dump(), 'service_id': stmt_id})
     )
 
-    folder = 'app/service/media/'
-
+    # add images
+    folder = 'src/service/media/'
     for image in images:
         if image.content_type not in ['image/jpeg', 'image/png']:
             raise HTTPException(400, 'Invalid content type')
@@ -54,14 +52,17 @@ async def create_service(
         await db.execute(
             insert(Image).values(data=str(path), service_id=stmt_id)
         )
+    
+    # commit all changes
     await db.commit()
+    
     return {'status': 'Ok'}
 
 
 @router.get('/', response_model=list[schemas.Service])
 async def get_services(db: session):
     query = (await db.execute(
-        select(Service, Prices).
+        select(Service, Price).
         options(joinedload(Service.owner)).
         join(Service.owner).
         join(Service.prices)
@@ -101,12 +102,13 @@ async def get_service(service_id: int, db: session):
         select(
             Service,
             User.username,
-            Prices,
+            Price,
             func.round(func.avg(Feedback.rating), 1).label('avg_rating'),
-        ).join(Service.owner).
+        ).
+        join(Service.owner).
         join(Service.prices).
         join(Service.feedbacks, isouter=True).
-        group_by(Service, User.username, Prices).
+        group_by(Service, User.username, Price).
         where(Service.id == service_id)
     )).first()
 
@@ -170,14 +172,14 @@ async def get_service(service_id: int, db: session):
 
 @router.patch('/{service_id}/update', status_code=status.HTTP_202_ACCEPTED)
 async def update_service(
-    service_id: int,
-    service: schemas.ServiceUpdate,
     db: session,
     user: Annotated[User | Enterprise, current_user],
+    service_id: int,
+    service: schemas.ServiceUpdate,
 ):
     service_ = (await db.execute(
         select(Service).
-        where(and_(Service.id == service_id))
+        where(Service.id == service_id)
     )).scalar()
 
     if not service_:
@@ -201,8 +203,8 @@ async def update_service(
 
     if service.prices:
         await db.execute(
-            update(Prices).
-            where(Prices.service_id == service_id).
+            update(Price).
+            where(Price.service_id == service_id).
             values(service.prices.model_dump(exclude_unset=True))
         )
     await db.commit()
@@ -211,13 +213,13 @@ async def update_service(
 
 @router.delete('/{service_id}/delete', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_service(
-    service_id: int,
     db: session,
     user: Annotated[User | Enterprise, current_user],
+    service_id: int,
 ):
     service = (await db.execute(
         select(Service).
-        where(and_(Service.id == service_id))
+        where(Service.id == service_id)
     )).scalar()
 
     if not service:
@@ -239,26 +241,25 @@ async def delete_service(
 
 
 @router.post(
-    '/{service_id}/feedback/create',
+    path='/{service_id}/feedback/create',
     status_code=status.HTTP_201_CREATED,
 )
 async def create_feedback(
+    db: session,
+    user: Annotated[User | Enterprise, current_user],
     service_id: int,
     feedback: schemas.FeedbackCreate,
-    user: Annotated[User | Enterprise, current_user],
-    db: session,
 ):
     user_id = user.get('user_id')
     try:
+        data = {
+            **feedback.model_dump(),
+            'user_id': user_id,
+            'service_id': service_id,
+        }
         await db.execute(
             insert(Feedback).
-            values(
-                {
-                    **feedback.model_dump(),
-                    'user_id': user_id,
-                    'service_id': service_id,
-                }
-            )
+            values(data)
         )
     except IntegrityError:
         raise permission_required

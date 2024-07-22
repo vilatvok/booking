@@ -1,7 +1,7 @@
 import json
+import enum
 
 from datetime import datetime
-from enum import Enum as EnumBase
 
 from pydantic import BaseModel, model_validator
 from pydantic_extra_types import phone_numbers
@@ -9,12 +9,12 @@ from pydantic_extra_types import phone_numbers
 from sqlalchemy import Integer, TypeDecorator
 
 
-class ServiceType(str, EnumBase):
+class ServiceType(enum.Enum):
     hotel = 'hotel'
     apartment = 'apartment'
 
 
-class Rate(EnumBase):
+class Rate(enum.Enum):
     one = 1
     two = 2
     three = 3
@@ -54,7 +54,7 @@ class ServicePrices(BaseModel):
     per_year: float | None = 0
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class FeedbackCreate(BaseModel):
@@ -67,7 +67,7 @@ class Feedback(FeedbackCreate):
     created: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ServiceCreate(BaseModel):
@@ -86,7 +86,7 @@ class ServiceCreate(BaseModel):
         return value
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ServiceUpdate(ServiceCreate):

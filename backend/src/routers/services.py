@@ -1,13 +1,11 @@
 from typing import Annotated
-
 from fastapi import APIRouter, HTTPException, status, UploadFile
 from sqlalchemy import select, update, delete, insert, func
 from sqlalchemy.orm import joinedload
-from sqlalchemy.exc import IntegrityError
 
 from src.exceptions import not_found, permission_required
-from src.dependencies import session, current_user
-from src.utils import services as utils
+from src.dependencies import session, current_user, current_service
+from src.utils.services import BaseService
 from src.utils.common import generate_image_path
 from src.models.services import Service, Feedback, Price, Image
 from src.models.users import User
@@ -36,8 +34,8 @@ async def get_services(db: session):
             joinedload(Service.prices),
         )
     )
-    stmt = await db.execute(query)
-    services = utils.get_services(stmt.unique().scalars().all())
+    services = await db.execute(query)
+    services = BaseService.get_services(services.unique().scalars().all())
     return services
 
 
@@ -46,17 +44,20 @@ async def get_service(service_id: int, db: session):
     avg_rating = func.round(func.avg(Feedback.rating), 1).label('avg_rating')
     query = (
         select(Service, avg_rating).
+        join(Service.feedbacks).
         options(
             joinedload(Service.owner).selectin_polymorphic([User, Enterprise]),
             joinedload(Service.images),
             joinedload(Service.prices),
             joinedload(Service.feedbacks).joinedload(Feedback.user),
         ).
-        where(Service.id == service_id).group_by(Service)
+        where(Service.id == service_id).
+        group_by(Service)
     )
 
-    service, avg_rating = (await db.execute(query)).first()
-    if not service:
+    try:
+        service, avg_rating = (await db.execute(query)).first()
+    except TypeError:
         raise not_found
 
     owner = service.owner
@@ -134,24 +135,16 @@ async def create_service(
 async def update_service(
     db: session,
     current_user: Annotated[UserSchema | EnterpriseSchema, current_user],
-    service_id: int,
+    service: Annotated[Service, current_service],
     form: ServiceUpdate,
-):
-    service = (await db.execute(
-        select(Service).
-        where(Service.id == service_id)
-    )).scalar()
-
-    if not service:
-        raise not_found
-
+):  
     if current_user.id != service.owner_id:
         raise permission_required
 
     data = form.model_dump(exclude=['prices'], exclude_unset=True)
     await db.execute(
         update(Service).
-        where(Service.id == service_id).
+        where(Service.id == service.id).
         values(data)
     )
 
@@ -159,7 +152,7 @@ async def update_service(
         data = form.prices.model_dump(exclude_unset=True)
         await db.execute(
             update(Price).
-            where(Price.service_id == service_id).
+            where(Price.service_id == service.id).
             values(data)
         )
     await db.commit()
@@ -171,41 +164,26 @@ async def update_service(
 async def delete_service(
     db: session,
     current_user: Annotated[UserSchema | EnterpriseSchema, current_user],
-    service_id: int,
-):
-    service = (await db.execute(
-        select(Service).
-        where(Service.id == service_id)
-    )).scalar()
-
-    if not service:
-        raise not_found
-
+    service: Annotated[Service, current_service],
+):  
     if current_user.id != service.owner_id:
         raise permission_required
 
-    await db.execute(delete(Service).where(Service.id == service_id))
+    await db.execute(delete(Service).where(Service.id == service.id))
     await db.commit()
     return {'status': 'Ok'}
 
 
-@router.post(
-    path='/{service_id}/feedback',
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post('/{service_id}/feedback', status_code=status.HTTP_201_CREATED)
 async def create_feedback(
     db: session,
-    service_id: int,
     current_user: Annotated[UserSchema, current_user],
+    service: Annotated[Service, current_service],
     feedback: FeedbackCreate,
 ):
-    try:
-        data = feedback.model_dump()
-        data['user_id'] = current_user.id
-        data['service_id'] = service_id
-        await db.execute(insert(Feedback).values(data))
-    except IntegrityError as e:
-        raise HTTPException(400, e)
-    else:
-        await db.commit()
+    data = feedback.model_dump()
+    data['user_id'] = current_user.id
+    data['service_id'] = service.id
+    await db.execute(insert(Feedback).values(data))
+    await db.commit()
     return {'status': 'created'}

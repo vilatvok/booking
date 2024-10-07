@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING
-
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
@@ -13,6 +12,7 @@ if TYPE_CHECKING:
 class User(Owner):
     __tablename__ = 'users'
 
+    # Columns
     id: Mapped[int] = mapped_column(ForeignKey('owner.id'), primary_key=True)
     username: Mapped[str] = mapped_column(unique=True)
     avatar: Mapped[str] = mapped_column(default='static/images/user_logo.png')
@@ -22,6 +22,7 @@ class User(Owner):
     social_id: Mapped[str | None] = mapped_column(unique=True)
     provider: Mapped[str] = mapped_column(default='local')
 
+    # Relationships
     feedbacks: Mapped[list['Feedback']] = relationship(
         back_populates='user',
         cascade='all, delete-orphan',

@@ -1,3 +1,5 @@
+import contextlib
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,13 +15,22 @@ from src.admin import (
 )
 from src.database import session_manager
 from src.routers.services import router as service_router
+from src.routers.auth import router as auth_router
 from src.routers.users import router as user_router
 from src.routers.settings import router as settings_router
 from src.routers.enterprises import router as enterprise_router
 from src.routers.google_auth import router as google_auth_router
 
 
-app = FastAPI()
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Close the database connection when the app is shut down."""
+    yield
+    if session_manager._engine is not None:
+        await session_manager.close()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # add cors for react app
@@ -44,6 +55,7 @@ app.mount('/media', StaticFiles(directory='src/media'), name='media')
 
 # add routes
 app.include_router(service_router, tags=['services'], prefix='/services')
+app.include_router(auth_router, tags=['auth'], prefix='/auth')
 app.include_router(user_router, tags=['users'], prefix='/users')
 app.include_router(google_auth_router, tags=['google'], prefix='/google-auth')
 app.include_router(settings_router, tags=['settings'], prefix='/settings')

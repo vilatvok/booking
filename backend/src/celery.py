@@ -1,6 +1,5 @@
 from smtplib import SMTP_SSL
 from email.mime.text import MIMEText
-
 from asgiref.sync import async_to_sync
 from celery.app import Celery
 from sqlalchemy import delete
@@ -17,16 +16,18 @@ celery_app.autodiscover_tasks()
 
 
 @celery_app.task
-def send_confirmation_letter(name, email):
+def send_confirmation_letter(name, email, from_):
     # Generate token and msg
     token = JWT.create_token({'name': name}, exp_time=360)
-    text = f'Confirmation link: http://localhost:8000/users/register-confirm/{token}'
+    text = ('Confirmation link: ' \
+            f'http://localhost:8000/{from_}/register-confirm/{token}')
 
     msg = MIMEText(text, 'html')
     msg['Subject'] = 'Registration Confirmation'
     msg['From'] = 'kvydyk@gmail.com'
     msg['To'] = email
     
+    # Get email settings
     settings = get_settings()
     host_user = settings.email_host_user
     host_password = settings.email_host_password
@@ -36,6 +37,8 @@ def send_confirmation_letter(name, email):
     server.login(host_user, host_password)
     server.send_message(msg)
     server.quit()
+
+    return token
 
 
 @celery_app.task

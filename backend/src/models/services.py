@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from sqlalchemy import ForeignKey, SmallInteger, CheckConstraint, text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 
@@ -12,6 +11,7 @@ from src.models.users import User
 class Service(Base):
     __tablename__ = 'service'
 
+    # Columns
     name: Mapped[str]
     description: Mapped[str]
     type: Mapped[ServiceType]
@@ -21,11 +21,13 @@ class Service(Base):
         server_default=text("TIMEZONE('utc', now())")
     )
 
+    # Foreign keys
     owner_id: Mapped[int] = mapped_column(
         ForeignKey('owner.id', ondelete='CASCADE'),
     )
-    owner: Mapped['Owner'] = relationship(back_populates='services')
 
+    # Relationships
+    owner: Mapped['Owner'] = relationship(back_populates='services')
     images: Mapped[list['Image']] = relationship(
         back_populates='service',
         cascade='all, delete-orphan',
@@ -43,22 +45,26 @@ class Service(Base):
 class Image(Base):
     __tablename__ = 'image'
 
+    # Columns
     data: Mapped[str]
 
-    service: Mapped['Service'] = relationship(back_populates='images')
+    # Foreign keys
     service_id: Mapped[int] = mapped_column(
         ForeignKey('service.id', ondelete='CASCADE'),
     )
+    service: Mapped['Service'] = relationship(back_populates='images')
 
 
 class Price(Base):
     __tablename__ = 'price'
 
+    # Columns
     per_hour: Mapped[float]
     per_day: Mapped[float]
     per_month: Mapped[float]
     per_year: Mapped[float]
 
+    # Foreign keys
     service: Mapped['Service'] = relationship(back_populates='prices')
     service_id: Mapped[int] = mapped_column(
         ForeignKey('service.id', ondelete='CASCADE'),
@@ -68,6 +74,7 @@ class Price(Base):
 class Feedback(Base):
     __tablename__ = 'feedback'
 
+    # Columns
     text: Mapped[str]
     rating: Mapped[int] = mapped_column(
         SmallInteger,
@@ -77,11 +84,14 @@ class Feedback(Base):
         server_default=text("TIMEZONE('utc', now())")
     )
 
+    # Foreign keys
     user_id: Mapped[int] = mapped_column(
         ForeignKey('users.id', ondelete='CASCADE'),
     )
-    user: Mapped['User'] = relationship(back_populates='feedbacks')
-    service: Mapped['Service'] = relationship(back_populates='feedbacks')
     service_id: Mapped[int] = mapped_column(
         ForeignKey('service.id', ondelete='CASCADE'),
     )
+
+    # Relationships
+    user: Mapped['User'] = relationship(back_populates='feedbacks')
+    service: Mapped['Service'] = relationship(back_populates='feedbacks')

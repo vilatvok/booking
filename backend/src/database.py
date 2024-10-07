@@ -1,6 +1,7 @@
 import contextlib
-from typing import AsyncIterator
 
+from typing import AsyncIterator
+from redis import ConnectionPool
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
     AsyncSession,
@@ -14,7 +15,9 @@ from src.config import get_database_url
 class DatabaseSessionManager:
     def __init__(self, host: str, engine_kwargs: dict = {}):
         self._engine = create_async_engine(host, **engine_kwargs)
-        self._sessionmaker = async_sessionmaker(autocommit=False, bind=self._engine)
+        self._sessionmaker = async_sessionmaker(bind=self._engine,
+            autocommit=False,
+        )
 
     async def close(self):
         if self._engine is None:
@@ -52,3 +55,7 @@ class DatabaseSessionManager:
 
 
 session_manager = DatabaseSessionManager(host=get_database_url())
+
+
+def redis_connection_pool():
+    return ConnectionPool(host='redis', decode_responses=True)

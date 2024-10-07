@@ -95,7 +95,11 @@ class AuthUser(BaseAuth):
         await cls.insert_data(db, User, data)
 
         # run celery tasks
-        send_confirmation_letter.apply_async(args=[form.username, form.email])
+        send_confirmation_letter.apply_async(args=[
+            form.username,
+            form.email,
+            'users',
+        ])
         delete_inactive_user.apply_async(args=[form.username])
         return {'status': 'Check your email for confirmation letter.'}
 
@@ -122,10 +126,15 @@ class AuthUser(BaseAuth):
 
     @classmethod
     async def authenticate(cls, db: session, username: str, password: str):
-        user = (await db.execute(
+        query = (
             select(User).
-            where(and_(User.username == username, User.provider == 'local'))
-        )).scalar()
+            where(and_(
+                User.username == username,
+                User.provider == 'local',
+                User.is_active == True
+            ))
+        )
+        user = (await db.execute(query)).scalar()
 
         cls.object_exists('username', user)     
         Password.check(password, user.password)
@@ -133,7 +142,8 @@ class AuthUser(BaseAuth):
 
 
 class AuthEnterprise(BaseAuth):
-    async def registration(self, db: session, form: dict, image=None):
+    @classmethod
+    async def registration(cls, db: session, form: dict, image=None):
         if image:
             logo = {
                 'path': 'media/enterprises/',
@@ -142,11 +152,15 @@ class AuthEnterprise(BaseAuth):
             }
         else:
             logo = None
-        data = await self.generate_data(form, logo)
-        await self.insert_data(db, Enterprise, data)
+        data = await cls.generate_data(form, logo)
+        await cls.insert_data(db, Enterprise, data)
 
         # run celery tasks
-        send_confirmation_letter.apply_async(args=[form.name, form.email])
+        send_confirmation_letter.apply_async(args=[
+            form.name,
+            form.email,
+            'enterprises',
+        ])
         delete_inactive_enterprise.apply_async(args=[form.name])
         return {'status': 'Check your email for confirmation letter.'}
 
@@ -176,7 +190,7 @@ class AuthEnterprise(BaseAuth):
     async def authenticate(cls, db: session, email: str, password: str):
         enterprise = (await db.execute(
             select(Enterprise).
-            where(Enterprise.email == email)
+            where(Enterprise.email == email, Enterprise.is_active == True)
         )).scalar()
 
         cls.object_exists('email', enterprise)

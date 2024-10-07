@@ -6,16 +6,12 @@ import NotFound from "./pages/NotFound"
 import ProtectedRoute from "./components/ProtectedRoute"
 import CreateService from "./pages/CreateService"
 import Navigation from "./components/Navigation"
+import GoogleAuth from "./pages/GoogleAuth"
 
 
 function Logout() {
   localStorage.clear()
   return <Navigate to="/login" />
-}
-
-function RegisterAndLogout() {
-  localStorage.clear()
-  return <Register />
 }
 
 function App() {
@@ -33,8 +29,9 @@ function App() {
             }
           />
           <Route path="/login" element={<Login />} />
+          <Route path="/google-auth" element={<GoogleAuth />} />
           <Route path="/logout" element={<Logout />} />
-          <Route path="/register" element={<RegisterAndLogout />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/create-service" element={<CreateService />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

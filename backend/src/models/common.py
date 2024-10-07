@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING, Annotated
-
 from sqlalchemy.orm import relationship, Mapped, DeclarativeBase, mapped_column
 
 # import models only in case type checking
-# when: Mapped[list['Feedback']]
+# # when: Mapped[list['Feedback']]
 if TYPE_CHECKING:
     from src.models.services import Service
 

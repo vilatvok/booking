@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 6702d523ab45
+Revision ID: fcb722f0c131
 Revises: 
-Create Date: 2024-09-17 10:49:37.615106
+Create Date: 2024-10-05 09:04:07.128658
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6702d523ab45'
+revision: str = 'fcb722f0c131'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -36,6 +36,7 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['id'], ['owner.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email'),
     sa.UniqueConstraint('name')
     )
     op.create_table('service',
@@ -55,15 +56,19 @@ def upgrade() -> None:
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('avatar', sa.String(), nullable=False),
     sa.Column('email', sa.String(), nullable=True),
-    sa.Column('password', sa.String(), nullable=False),
+    sa.Column('password', sa.String(), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('social_id', sa.String(), nullable=True),
+    sa.Column('provider', sa.String(), nullable=False),
     sa.ForeignKeyConstraint(['id'], ['owner.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email'),
+    sa.UniqueConstraint('social_id'),
     sa.UniqueConstraint('username')
     )
     op.create_table('feedback',
     sa.Column('text', sa.String(), nullable=False),
-    sa.Column('rating', sa.Enum('one', 'two', 'three', 'four', 'five', name='rate'), nullable=False),
+    sa.Column('rating', sa.SmallInteger(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text("TIMEZONE('utc', now())"), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('service_id', sa.Integer(), nullable=False),

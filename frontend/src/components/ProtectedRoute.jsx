@@ -34,10 +34,13 @@ function ProtectedRoute({ children }) {
 
   const auth = async () => {
     const token = localStorage.getItem(ACCESS_TOKEN);
+    console.log(token)
     if (!token) {
       setAuthorized(false);
       return;
     }
+  
+    // check if the user is logged in
     const decoded = jwtDecode(token);
     const time_exp = decoded.exp;
     const now = Date.now() / 1000;
@@ -53,6 +56,7 @@ function ProtectedRoute({ children }) {
       if (isUser === 200) {
         setAuthorized(true);
       } else {
+        console.log('hasa')
         navigate("/login");
       }
     }
@@ -61,7 +65,6 @@ function ProtectedRoute({ children }) {
   if (authorized === null) {
     return <div>Loading...</div>;
   }
-
   return authorized ? children : <Navigate to="/login" />;
 }
 

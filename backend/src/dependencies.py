@@ -1,11 +1,14 @@
 from typing import Annotated, AsyncGenerator
 
+from redis import Redis
 from fastapi import HTTPException, Request, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import session_manager
+from src.exceptions import not_found
+from src.models.services import Service
+from src.database import redis_connection_pool, session_manager
 from src.utils.tokens import JWT
 from src.models.users import User
 from src.models.enterprises import Enterprise
@@ -17,8 +20,11 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with session_manager.session() as session:
         yield session
 
-
 session = Annotated[AsyncSession, Depends(get_async_session)]
+
+
+def get_redis_session():
+    return Redis(connection_pool=redis_connection_pool())
 
 
 user_oauth2_scheme = OAuth2PasswordBearer(
@@ -36,20 +42,27 @@ async def get_current_user(
     db: session,
     user_token: Annotated[str, Depends(user_oauth2_scheme)],
     enterprise_token: Annotated[str, Depends(enterprise_oauth2_scheme)],
+    rdb = Depends(get_redis_session),
 ):
-    # Get token data
-    data = JWT.decode_token(user_token)
+    # Get token data 
+    data = JWT.decode_token(user_token, rdb=rdb)
     username = data.get('username')
+    enterprise = data.get('enterprise')
+    google_id = data.get('sub')
+
     # Get user or enterprise
     if username:
-        stmt = select(User).where(User.username == username)
-        user = (await db.execute(stmt)).scalar()
+        query = select(User).where(User.username == username)
+        user = (await db.execute(query)).scalar()
         return UserSchema(**user.__dict__)
-    elif data.get('enterprise'):
-        enterprise = data.get('enterprise')
-        stmt = select(Enterprise).where(Enterprise.name == enterprise)
-        enterprise = (await db.execute(stmt)).scalar()
+    elif enterprise:
+        query = select(Enterprise).where(Enterprise.name == enterprise)
+        enterprise = (await db.execute(query)).scalar()
         return EnterpriseSchema(**enterprise.__dict__)
+    elif google_id:
+        query = select(User).where(User.social_id == google_id)
+        user = (await db.execute(query)).scalar()
+        return UserSchema(**user.__dict__)
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,7 +73,6 @@ async def get_current_user(
 
 def get_anonymous_user(request: Request):
     """Generally is used for registration and login routes."""
-
     token = request.headers.get('Authorization')
     if not token:
         return
@@ -71,5 +83,14 @@ def get_anonymous_user(request: Request):
         )
 
 
+async def get_service_dependency(db: session, service_id: int):
+    query = select(Service).where(Service.id == service_id)
+    service = (await db.execute(query)).scalar()
+    if not service:
+        raise not_found
+    return service
+
+
+current_service = Depends(get_service_dependency)
 current_user = Depends(get_current_user)
 anonymous_user = Depends(get_anonymous_user)

@@ -1,11 +1,12 @@
-from typing import Annotated
-
 import requests
+
+from typing import Annotated
 from fastapi import Depends, HTTPException, status, APIRouter
 from fastapi.datastructures import UploadFile
 from sqlalchemy import select, and_
 from sqlalchemy.exc import IntegrityError
 
+from src.utils.tokens import JWT
 from src.utils.common import generate_image_path
 from src.models.users import User
 from src.dependencies import anonymous_user, session
@@ -17,7 +18,7 @@ from src.config import Settings, get_settings
 router = APIRouter()
 
 
-@router.get('/signin')
+@router.get('/signin', dependencies=[anonymous_user])
 async def login_google(settings: Annotated[Settings, Depends(get_settings)]):
     url = 'https://accounts.google.com/o/oauth2/auth'
     client_id = f'client_id={settings.google_client_id}'
@@ -31,7 +32,7 @@ async def login_google(settings: Annotated[Settings, Depends(get_settings)]):
     }
 
 
-@router.get('/login')
+@router.get('/login', dependencies=[anonymous_user])
 async def auth_google(
     code: str,
     db: session,
@@ -47,25 +48,27 @@ async def auth_google(
         'grant_type': 'authorization_code',
     }
     response = requests.post(token_url, data=data).json()
-    access_token = response.get('access_token')
-    refresh_token = response.get('refresh_token')
+    
+    # get access token and decode it
 
     # get user info
+    access_token = response.get('access_token')
     user_info = requests.get(
         'https://www.googleapis.com/oauth2/v1/userinfo', 
         headers={'Authorization': f'Bearer {access_token}'},
     ).json()
+    google_id = user_info.get('id')
     email = user_info.get('email')
 
     # check if user exists
-    query = select(User).where(and_(User.email == email))
+    query = select(User).where(User.email == email)
     user = (await db.execute(query)).scalar()
-
+    
     if not user:
         return {
             'url': 'http://localhost:8000/google-auth/register',
             'email': email,
-            'google_id': user_info.get('id'),
+            'google_id': google_id,
         }
     else:
         if user.provider != 'google':
@@ -73,6 +76,9 @@ async def auth_google(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User already exists.'
             )
+        data = {'username': user.username, 'google_id': google_id, 'email': email}
+        access_token = JWT.create_token(data)
+        refresh_token = JWT.create_token(data, exp_time=1440)
         return Token(access_token=access_token, refresh_token=refresh_token)
 
 

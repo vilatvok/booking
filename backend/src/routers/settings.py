@@ -1,9 +1,7 @@
 from typing import Annotated
-
 from fastapi import Depends, HTTPException, status, APIRouter
 from sqlalchemy import update
 
-from src.config import redis_client
 from src.utils.tokens import JWT
 from src.utils.auth import Password
 from src.schemas.enterprises import EnterpriseSchema
@@ -16,6 +14,7 @@ from src.dependencies import (
     user_oauth2_scheme,
     enterprise_oauth2_scheme,
     session,
+    get_redis_session,
 )
 
 
@@ -52,6 +51,7 @@ async def change_password(
 async def logout(
     user_token: Annotated[str, Depends(user_oauth2_scheme)],
     enterprise_token: Annotated[str, Depends(enterprise_oauth2_scheme)],
+    rdb = Depends(get_redis_session),
 ):
     try:
         JWT.decode_token(user_token)
@@ -60,5 +60,5 @@ async def logout(
         token = enterprise_token
 
     # Add token to blacklist
-    redis_client.sadd('jwt_blacklist', token)
+    rdb.sadd('jwt_blacklist', token)
     return {'status': 'You logged out'}

@@ -13,6 +13,7 @@ class BaseUser(BaseModel):
 class UserSchema(BaseUser):
     id: int
     avatar: str
+    provider: str
 
 
 class UserRegister(BaseUser):

@@ -1,6 +1,6 @@
 import json
-from datetime import datetime
 
+from datetime import datetime
 from pydantic import BaseModel, model_validator, EmailStr
 
 

@@ -2,18 +2,19 @@ import api from "../utils/api"
 import User from "../components/User"
 import Service from "../components/Service";
 import { useEffect, useState } from "react"
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useCurrentObj } from '../hooks/useCurrentObject';
 
 
 function UserService() {
   const [user, setUser] = useState([]);
   const [services, setServices] = useState([]);
-  const username = useCurrentUser().username;
+  const objName = useCurrentObj().name;
+
 
   useEffect(() => {
-    getUser(username)
-    getServices(username)
-  }, [username])
+    getUser(objName)
+    getServices(objName)
+  }, [objName])
 
   const getUser = (username) => {
     api.get(`/users/${username}`)
@@ -56,7 +57,7 @@ function Home() {
   return (
     <>
       <div>
-        <UserService></UserService>
+        <UserService />
       </div>
     </>
   )

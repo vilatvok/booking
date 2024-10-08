@@ -35,6 +35,7 @@ user_oauth2_scheme = OAuth2PasswordBearer(
 enterprise_oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl='/enterprises/login',
     scheme_name='enterprise_oauth2',
+    description='Username here is used as email',
 )
 
 
@@ -46,29 +47,28 @@ async def get_current_user(
 ):
     # Get token data 
     data = JWT.decode_token(user_token, rdb=rdb)
-    username = data.get('username')
-    enterprise = data.get('enterprise')
-    google_id = data.get('sub')
+    obj_type = data.get('obj')
+    obj_name = data.get('name')
 
-    # Get user or enterprise
-    if username:
-        query = select(User).where(User.username == username)
-        user = (await db.execute(query)).scalar()
-        return UserSchema(**user.__dict__)
-    elif enterprise:
-        query = select(Enterprise).where(Enterprise.name == enterprise)
-        enterprise = (await db.execute(query)).scalar()
-        return EnterpriseSchema(**enterprise.__dict__)
-    elif google_id:
-        query = select(User).where(User.social_id == google_id)
-        user = (await db.execute(query)).scalar()
-        return UserSchema(**user.__dict__)
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Invalid data',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
+    match obj_type:
+        case 'user':
+            query = select(User).where(User.username == obj_name)
+            user = (await db.execute(query)).scalar()
+            return UserSchema(**user.__dict__)
+        case 'google_user':
+            query = select(User).where(User.username == obj_name)
+            user = (await db.execute(query)).scalar()
+            return UserSchema(**user.__dict__)
+        case 'enterprise':
+            query = select(Enterprise).where(Enterprise.name == obj_name)
+            enterprise = (await db.execute(query)).scalar()
+            return EnterpriseSchema(**enterprise.__dict__)
+        case '_':
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Invalid data',
+                headers={'WWW-Authenticate': 'Bearer'},
+            )
 
 
 def get_anonymous_user(request: Request):

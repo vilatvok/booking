@@ -1,13 +1,14 @@
 import api from '../utils/api';
 import { Navigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import { REFRESH_TOKEN, ACCESS_TOKEN } from '../data/constants';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCurrentObj } from '../hooks/useCurrentObject';
 
 
 function ProtectedRoute({ children }) {
   const [authorized, setAuthorized] = useState(null);
+  const authenticatedObject = useCurrentObj();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,31 +34,28 @@ function ProtectedRoute({ children }) {
   };
 
   const auth = async () => {
-    const token = localStorage.getItem(ACCESS_TOKEN);
-    console.log(token)
-    if (!token) {
+    if (!authenticatedObject) {
       setAuthorized(false);
       return;
     }
-  
-    // check if the user is logged in
-    const decoded = jwtDecode(token);
-    const time_exp = decoded.exp;
+    const time_exp = authenticatedObject.exp;
     const now = Date.now() / 1000;
     if (time_exp < now) {
       await refreshToken();
     } else {
-      const isUser = (
+      const objName = authenticatedObject.name;
+      const objType = authenticatedObject.obj;
+      const url = objType === 'user' ? `users/${objName}` : `enterprises/${objName}`;
+      const isObj = (
         await api
-          .get(`users/${decoded.username}`)
+          .get(url)
           .then((res) => res.status)
           .catch((err) => console.log(err))
       )
-      if (isUser === 200) {
+      if (isObj === 200) {
         setAuthorized(true);
       } else {
-        console.log('hasa')
-        navigate("/login");
+        navigate("/users/login");
       }
     }
   };
@@ -65,7 +63,7 @@ function ProtectedRoute({ children }) {
   if (authorized === null) {
     return <div>Loading...</div>;
   }
-  return authorized ? children : <Navigate to="/login" />;
+  return authorized ? children : <Navigate to="/users/login" />;
 }
 
 export default ProtectedRoute;

@@ -76,7 +76,7 @@ async def auth_google(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User already exists.'
             )
-        data = {'username': user.username, 'google_id': google_id, 'email': email}
+        data = {'obj': 'google_user', 'name': user.username}
         access_token = JWT.create_token(data)
         refresh_token = JWT.create_token(data, exp_time=1440)
         return Token(access_token=access_token, refresh_token=refresh_token)

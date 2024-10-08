@@ -1,8 +1,10 @@
-import HandleForm from "../components/Form"
+import HandleForm from "../components/AuthForm"
 
 
-function Login() {
-    return <HandleForm route="/users/login" method="login"></HandleForm>
+export function UserLogin() {
+    return <HandleForm route="/users/login" method="login"/>
 }
 
-export default Login
+export function EnterpriseLogin() {
+    return <HandleForm route="/enterprises/login" method="login" />
+}

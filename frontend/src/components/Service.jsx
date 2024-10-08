@@ -1,13 +1,13 @@
 import api from '../utils/api';
 import { ACCESS_TOKEN } from '../data/constants';
 import { useState } from 'react';
-import { useCurrentUser } from '../hooks/useCurrentUser';
+import { useCurrentObj } from '../hooks/useCurrentObject';
 
 
 function Service({ service, onDelete, onUpdate }) {
   const [description, setDescription] = useState(service.description);
   const [editing, setEditing] = useState(false);
-  const username = useCurrentUser().username;
+  const username = useCurrentObj();
 
   const image = "http://localhost:8000/" + service.images[0]?.data
   const accessToken = localStorage.getItem(ACCESS_TOKEN);

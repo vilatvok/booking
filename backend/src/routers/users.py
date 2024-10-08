@@ -61,7 +61,7 @@ async def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
 ):
     user = await AuthUser.authenticate(db, form.username, form.password)
-    data = {'username': user.username}
+    data = {'obj': 'user', 'name': user.username}
     access = JWT.create_token(data)
     refresh = JWT.create_token(data, exp_time=1440)
     return Token(access_token=access, refresh_token=refresh)

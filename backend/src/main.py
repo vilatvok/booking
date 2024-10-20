@@ -6,12 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqladmin import Admin
 
 from src.admin import (
+    ChatAdmin,
     UserAdmin,
     EnterpriseAdmin,
     ServiceAdmin,
     FeedbackAdmin,
     ImageAdmin,
     PriceAdmin,
+    MessageAdmin,
 )
 from src.database import session_manager
 from src.routers.services import router as service_router
@@ -20,6 +22,7 @@ from src.routers.users import router as user_router
 from src.routers.settings import router as settings_router
 from src.routers.enterprises import router as enterprise_router
 from src.routers.google_auth import router as google_auth_router
+from src.routers.chats import router as chat_router
 
 
 @contextlib.asynccontextmanager
@@ -59,6 +62,7 @@ app.include_router(auth_router, tags=['auth'], prefix='/auth')
 app.include_router(user_router, tags=['users'], prefix='/users')
 app.include_router(google_auth_router, tags=['google'], prefix='/google-auth')
 app.include_router(settings_router, tags=['settings'], prefix='/settings')
+app.include_router(chat_router, tags=['chats'], prefix='/chats')
 app.include_router(
     enterprise_router,
     tags=['enterprises'],
@@ -74,3 +78,5 @@ admin.add_view(ServiceAdmin)
 admin.add_view(FeedbackAdmin)
 admin.add_view(ImageAdmin)
 admin.add_view(PriceAdmin)
+admin.add_view(ChatAdmin)
+admin.add_view(MessageAdmin)

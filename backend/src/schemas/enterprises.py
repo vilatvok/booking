@@ -13,6 +13,11 @@ class EnterpriseSchema(BaseModel):
     created_at: datetime
 
 
+class EnterpriseComplete(EnterpriseSchema):
+    password: str
+    is_active: bool
+
+
 class EnterpriseRegister(BaseModel):
     name: str
     owner: str
@@ -25,4 +30,3 @@ class EnterpriseRegister(BaseModel):
         if isinstance(value, str):
             return cls(**json.loads(value))
         return value
-

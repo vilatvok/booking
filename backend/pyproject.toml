@@ -1,11 +1,12 @@
 [tool.poetry]
-name = "booking"
+name = "backend"
 version = "0.1.0"
 description = ""
-authors = ["kvydyk"]
+authors = ["kvydyk <kvydyk@gmail.com>"]
+readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.12"
 aiofiles = "24.1.0"
 aioredis = "2.0.1"
 aiosmtplib = "2.0.2"

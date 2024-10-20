@@ -1,66 +1,46 @@
-import api from "../utils/api"
-import User from "../components/User"
-import Service from "../components/Service";
-import { useEffect, useState } from "react"
-import { useCurrentObj } from '../hooks/useCurrentObject';
+import { useState, useEffect } from 'react';
+import api from '../utils/api';
+import Service from '../components/Service';
 
 
-function UserService() {
-  const [user, setUser] = useState([]);
+function Home() {
   const [services, setServices] = useState([]);
-  const objName = useCurrentObj().name;
-
 
   useEffect(() => {
-    getUser(objName)
-    getServices(objName)
-  }, [objName])
+    getServices();
+  }, [])
 
-  const getUser = (username) => {
-    api.get(`/users/${username}`)
-      .then((res) => res.data)
-      .then((data) => setUser(data))
-      .catch((err) => console.log(err))
-  }
-
-  const getServices = (username) => {
-    api.get(`/users/${username}/services`)
+  const getServices = async () => {
+    await api
+      .get('/services')
       .then((res) => res.data)
       .then((data) => setServices(data))
-      .catch((err) => console.log(err))
+      .catch((err) => console.error(err));
   }
 
   const listServices = services.map((item) => {
     return (
-      <li key={item.id}>
+      <div
+        className="mx-3 mt-6 flex flex-col rounded-lg bg-white 
+        text-surface shadow-secondary-1 
+        dark:bg-surface-dark dark:text-white 
+        sm:shrink-0 sm:grow sm:basis-0"
+        key={item.id}
+      >
         <Service
           service={item}
           onDelete={(u) => getServices(u)}
-          onUpdate={(u) => getServices(u)}>
-        </Service>
-      </li>
-    )
-  })
+          onUpdate={(u) => getServices(u)}
+        />
+      </div>
+    );
+  });
 
   return (
-    <>
-      <div>
-        <User user={user} onUpdate={(u) => getUser(u)}></User>
-        {listServices}
-      </div>
-    </>
+    <div className="grid-cols-1 sm:grid md:grid-cols-3 ">
+      {listServices}
+    </div>
   )
 }
 
-
-function Home() {
-  return (
-    <>
-      <div>
-        <UserService />
-      </div>
-    </>
-  )
-}
-
-export default Home
+export default Home;

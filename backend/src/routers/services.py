@@ -4,9 +4,9 @@ from sqlalchemy import select, update, delete, insert, func
 from sqlalchemy.orm import joinedload
 
 from src.exceptions import not_found, permission_required
-from src.dependencies import session, current_user, current_service
-from src.utils.services import BaseService
+from src.dependencies import db_session, current_user, current_service
 from src.utils.common import generate_image_path
+from src.utils.services import get_all_services
 from src.models.services import Service, Feedback, Price, Image
 from src.models.users import User
 from src.models.enterprises import Enterprise
@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 @router.get('/', response_model=list[ServiceSchema])
-async def get_services(db: session):
+async def get_services(db: db_session):
     query = (
         select(Service).
         options(
@@ -35,12 +35,12 @@ async def get_services(db: session):
         )
     )
     services = await db.execute(query)
-    services = BaseService.get_services(services.unique().scalars().all())
+    services = get_all_services(services.unique().scalars().all())
     return services
 
 
 @router.get('/{service_id}', response_model=OneService)
-async def get_service(service_id: int, db: session):
+async def get_service(service_id: int, db: db_session):
     avg_rating = func.round(func.avg(Feedback.rating), 1).label('avg_rating')
     query = (
         select(Service, avg_rating).
@@ -95,7 +95,7 @@ async def get_service(service_id: int, db: session):
 
 @router.post('/', status_code=status.HTTP_201_CREATED)
 async def create_service(
-    db: session,
+    db: db_session,
     current_user: Annotated[UserSchema | EnterpriseSchema, current_user],
     service: ServiceCreate,
     images: list[UploadFile], # This field is optional
@@ -133,7 +133,7 @@ async def create_service(
 
 @router.patch('/{service_id}', status_code=status.HTTP_202_ACCEPTED)
 async def update_service(
-    db: session,
+    db: db_session,
     current_user: Annotated[UserSchema | EnterpriseSchema, current_user],
     service: Annotated[Service, current_service],
     form: ServiceUpdate,
@@ -162,7 +162,7 @@ async def update_service(
 
 @router.delete('/{service_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_service(
-    db: session,
+    db: db_session,
     current_user: Annotated[UserSchema | EnterpriseSchema, current_user],
     service: Annotated[Service, current_service],
 ):  
@@ -176,7 +176,7 @@ async def delete_service(
 
 @router.post('/{service_id}/feedback', status_code=status.HTTP_201_CREATED)
 async def create_feedback(
-    db: session,
+    db: db_session,
     current_user: Annotated[UserSchema, current_user],
     service: Annotated[Service, current_service],
     feedback: FeedbackCreate,

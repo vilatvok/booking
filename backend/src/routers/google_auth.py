@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from src.utils.tokens import JWT
 from src.utils.common import generate_image_path
 from src.models.users import User
-from src.dependencies import anonymous_user, session
+from src.dependencies import anonymous_user, db_session
 from src.schemas.tokens import Token
 from src.schemas.users import UserSocialRegister
 from src.config import Settings, get_settings
@@ -18,7 +18,7 @@ from src.config import Settings, get_settings
 router = APIRouter()
 
 
-@router.get('/signin', dependencies=[anonymous_user])
+@router.get('/link', dependencies=[anonymous_user])
 async def login_google(settings: Annotated[Settings, Depends(get_settings)]):
     url = 'https://accounts.google.com/o/oauth2/auth'
     client_id = f'client_id={settings.google_client_id}'
@@ -32,10 +32,14 @@ async def login_google(settings: Annotated[Settings, Depends(get_settings)]):
     }
 
 
-@router.get('/login', dependencies=[anonymous_user])
+@router.get(
+    path='/login',
+    dependencies=[anonymous_user],
+    status_code=status.HTTP_200_OK,
+)
 async def auth_google(
     code: str,
-    db: session,
+    db: db_session,
     settings: Annotated[Settings, Depends(get_settings)],
 ):
     # get token data
@@ -76,7 +80,7 @@ async def auth_google(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail='User already exists.'
             )
-        data = {'obj': 'google_user', 'name': user.username}
+        data = {'obj': 'google_user', 'id': user.id, 'name': user.username}
         access_token = JWT.create_token(data)
         refresh_token = JWT.create_token(data, exp_time=1440)
         return Token(access_token=access_token, refresh_token=refresh_token)
@@ -89,7 +93,7 @@ async def auth_google(
     response_model=UserSocialRegister,
 )
 async def register_google(
-    db: session,
+    db: db_session,
     form: UserSocialRegister,
     avatar: UploadFile | None = None,
 ):  

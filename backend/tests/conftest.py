@@ -29,14 +29,14 @@ async def get_test_session():
 app.dependency_overrides[get_async_session] = get_test_session
 
 
-# Override redis session
+# Override redis module
 app.dependency_overrides[get_redis_session] = (
     lambda: Redis(host='redis', port=6379, db=1)
 )
 
 
 # Make fixtures
-@pytest.fixture(autouse=True, scope='session')
+@pytest.fixture(autouse=True, scope='module')
 async def prepare_database():
     engine = session_manager._engine
 
@@ -50,14 +50,14 @@ async def prepare_database():
         user = User(
             username='admin',
             password=hashed_password,
-            email='djkasd@gmail.com',
+            email='john@gmail.com',
             is_active=True,
         )
         enterprise = Enterprise(
             name='admin',
             owner='miracle',
             password=hashed_password,
-            email='djkabgsd@gmail.com',
+            email='john@gmail.com',
             is_active=True,
         )
         session.add_all([user, enterprise])
@@ -71,14 +71,14 @@ async def get_token(data):
     transport = ASGITransport(app=app)
     base_url = 'http://test'
     async with AsyncClient(transport=transport, base_url=base_url) as ac:
-        user_data = {'username': 'admin', 'password': '12345rtx'}
-        enterprise_data = {
-            'username': 'djkabgsd@gmail.com',
-            'password': '12345rtx',
-        }
         if data == 'user':
+            user_data = {'username': 'admin', 'password': '12345rtx'}
             response = await ac.post('/users/login', data=user_data)
         else:
+            enterprise_data = {
+                'username': 'john@gmail.com',
+                'password': '12345rtx',
+            }
             response = await ac.post('/enterprises/login', data=enterprise_data)
         access_token = response.json()['access_token']
         yield f'Bearer {access_token}'
@@ -95,31 +95,31 @@ async def client(headers: dict = None):
         yield ac
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 async def c():
     async for c in client():
         yield c
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 async def user_token():
     async for token in get_token('user'):
         yield token
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 async def enterprise_token():
     async for token in get_token('enterprise'):
         yield token
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 async def auc(user_token):
     async for ac in client({'Authorization': user_token}):
         yield ac
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 async def aec(enterprise_token):
     async for ac in client({'Authorization': enterprise_token}):
         yield ac

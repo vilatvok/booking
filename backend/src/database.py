@@ -15,7 +15,8 @@ from src.config import get_database_url
 class DatabaseSessionManager:
     def __init__(self, host: str, engine_kwargs: dict = {}):
         self._engine = create_async_engine(host, **engine_kwargs)
-        self._sessionmaker = async_sessionmaker(bind=self._engine,
+        self._sessionmaker = async_sessionmaker(
+            bind=self._engine,
             autocommit=False,
         )
 

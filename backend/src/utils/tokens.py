@@ -1,5 +1,6 @@
 import jwt
 
+from redis import Redis
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 
@@ -19,14 +20,14 @@ class JWT:
         return encoded
 
     @staticmethod
-    def decode_token(token: str, rdb=None) -> dict:
+    def decode_token(token: str, rdb: Redis | None = None) -> dict:
         exc = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Token is invalid',
             headers={'WWW-Authenticate': 'Bearer'},
         )
 
-        # Raise an error if token is in blacklist.
+        # Raise an error if token is in the blacklist.
         if rdb:
             if token in rdb.smembers('jwt_blacklist'):
                 raise exc

@@ -12,7 +12,7 @@ async def test_registration(mock_send_confirmation_letter, c):
     data = {
         'name': 'test_enterprise',
         'owner': 'Test owner',
-        'email': 'asdvtr@gmail.com',
+        'email': 'foo@gmail.com',
         'password': '123456rt'
     }
 
@@ -36,18 +36,19 @@ async def test_registration(mock_send_confirmation_letter, c):
 
 @pytest.mark.parametrize('path, status, res', [
     ('/enterprises/', 200, []),
-    ('/enterprises/admin', 200, []),
+    ('/enterprises/admin', 200, 'admin'),
     ('/enterprises/admin/services', 200, []),
 ])
-async def test_get_user_routers(c, path, status, res):
+async def test_get_enterpise_routers(c, path, status, res):
     response = await c.get(path)
     assert response.status_code == status
-    if path == '/enterprises/':
-        assert response.json() != res
-    if path == '/enterprises/admin':
-        assert response.json()['name'] == 'admin'
-    if path == '/enterprises/admin/services':
-        assert response.json() == res
+    match path:
+        case '/enterprises/':
+            assert response.json() != res
+        case '/enterprises/admin':
+            assert response.json()['name'] == res
+        case '/enterprises/admin/services':
+            assert response.json() == res
 
 
 async def test_update_enterprise(aec):

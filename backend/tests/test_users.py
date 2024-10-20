@@ -12,7 +12,7 @@ async def test_registration(mock_send_confirmation_letter, c):
     # test data
     data = {
         'username': 'asasa',
-        'email': 'aasdg@gmail.com',
+        'email': 'foo@gmail.com',
         'password': '12345tkr',
     }
 
@@ -45,12 +45,13 @@ async def test_registration(mock_send_confirmation_letter, c):
 async def test_get_user_routers(c, path, status, res):
     response = await c.get(path)
     assert response.status_code == status
-    if path == '/users/':
-        assert response.json() != res
-    if path == '/users/admin':
-        assert response.json()['username'] == res
-    if path == '/users/admin/services':
-        assert response.json() == res
+    match path:
+        case '/users/':
+            assert response.json() != res
+        case '/users/admin':
+            assert response.json()['username'] == res
+        case '/users/admin/services':
+            assert response.json() == res
 
 
 async def test_update_user(auc):
@@ -75,5 +76,5 @@ async def test_delete_user(auc):
     response = await auc.delete('/users/me')
     assert response.status_code == 204
 
-    response = await auc.get('/users/lmao')
+    response = await auc.get('/users/admin')
     assert response.status_code == 404

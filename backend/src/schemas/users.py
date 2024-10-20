@@ -16,6 +16,11 @@ class UserSchema(BaseUser):
     provider: str
 
 
+class UserComplete(UserSchema):
+    password: str
+    is_active: bool
+
+
 class UserRegister(BaseUser):
     password: str
 

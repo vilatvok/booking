@@ -1,13 +1,16 @@
 from fastapi import HTTPException, status
+from fastapi.datastructures import UploadFile
 from passlib.context import CryptContext
 from sqlalchemy import select, update, and_
 from sqlalchemy.exc import IntegrityError
 
-from src.dependencies import session
+from src.dependencies import db_session
 from src.utils.common import generate_image_path
 from src.utils.tokens import JWT
 from src.models.users import User
 from src.models.enterprises import Enterprise
+from src.schemas.users import UserRegister
+from src.schemas.enterprises import EnterpriseRegister
 from src.celery import (
     delete_inactive_enterprise,
     delete_inactive_user,
@@ -19,7 +22,7 @@ class Password:
     password_hash = CryptContext(schemes=['bcrypt'], deprecated='auto')
 
     @staticmethod
-    def validate(password: str):
+    def validate(password: str) -> None:
         password_unique_msg = 'Password must contain digits and characters'
         too_short_msg = 'Too short password'
         if len(password) < 8:
@@ -28,11 +31,11 @@ class Password:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, password_unique_msg)
 
     @classmethod
-    def hash(cls, password: str):
+    def hash(cls, password: str) -> str:
         return cls.password_hash.hash(password)
 
     @classmethod
-    def check(cls, password: str, current_password: str):
+    def check(cls, password: str, current_password: str) -> None:
         cls.validate(password)
         is_verified = cls.password_hash.verify(password, current_password)
         if not is_verified:
@@ -42,14 +45,22 @@ class Password:
             )
 
     @classmethod
-    def generate(cls, password: str):
+    def generate(cls, password: str) -> str:
         cls.validate(password)
         return cls.hash(password)
 
 
+class ObjectExistsException(HTTPException):
+    def __init__(self, obj: str) -> None:
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'{obj} is not found or already exists.',
+        )
+
+
 class BaseAuth:
     @staticmethod
-    async def generate_data(form: dict, file: dict | None = None):
+    async def generate_data(form: dict, file: dict | None = None) -> dict:
         data = form.model_dump()
         data['password'] = Password.generate(form.password)
         if file:
@@ -60,7 +71,11 @@ class BaseAuth:
         return data
 
     @staticmethod
-    async def insert_data(db: session, obj: User | Enterprise, data: dict):
+    async def insert_data(
+        db: db_session,
+        obj: User | Enterprise,
+        data: dict
+    ) -> None:
         try:
             db.add(obj(**data))
             await db.commit()
@@ -71,7 +86,7 @@ class BaseAuth:
             )
         
     @staticmethod
-    def object_exists(msg: str, obj: User | Enterprise | None):
+    def object_exists(msg: str, obj: User | Enterprise | None) -> None:
         exc = HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f'Incorrect {msg}',
@@ -79,43 +94,54 @@ class BaseAuth:
         if obj is None:
             raise exc
 
-
-class AuthUser(BaseAuth):
     @classmethod
-    async def registration(cls, db: session, form: dict, image):
+    async def registration(
+        cls,
+        db: db_session,
+        form: dict,
+        path: str,
+        model: User | Enterprise,
+        image: UploadFile | None = None,
+    ) -> None:
         if image:
-            avatar = {
-                'path': 'media/users/',
-                'type': 'avatar',
+            file_data = {
+                'path': path,
+                'type': 'avatar' if model == User else 'logo',
                 'image': image,
             }
         else:
-            avatar = None
-        data = await cls.generate_data(form, avatar)
-        await cls.insert_data(db, User, data)
+            file_data = None
+        
+        data = await cls.generate_data(form, file_data)
+        await cls.insert_data(db, model, data)
 
-        # run celery tasks
-        send_confirmation_letter.apply_async(args=[
-            form.username,
-            form.email,
-            'users',
-        ])
+
+class AuthUser(BaseAuth):
+    @classmethod
+    async def registration(
+        cls,
+        db: db_session,
+        form: UserRegister,
+        image: UploadFile | None = None,
+    ) -> dict:
+        await super().registration(db, form, 'media/users/', User, image)
+
+        token_data = {'name': form.username}
+        recipient = form.email
+        url = 'users'
+        send_confirmation_letter.apply_async(args=[token_data, recipient, url])
         delete_inactive_user.apply_async(args=[form.username])
         return {'status': 'Check your email for confirmation letter.'}
 
     @staticmethod
-    async def confirm_registration(token: str, db: session):
+    async def confirm_registration(token: str, db: db_session) -> dict:
         data = JWT.decode_token(token)
         username = data['name']
 
         query = select(User).where(User.username == username)
         user = (await db.execute(query)).scalar()
         if not user or user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='User is not found or already exists.'
-            )
-
+            raise ObjectExistsException('User')
         await db.execute(
             update(User).
             where(User.username == username).
@@ -125,7 +151,12 @@ class AuthUser(BaseAuth):
         return {'status': 'User has been created successfully'}
 
     @classmethod
-    async def authenticate(cls, db: session, username: str, password: str):
+    async def authenticate(
+        cls,
+        db: db_session,
+        username: str,
+        password: str,
+    ) -> User:
         query = (
             select(User).
             where(and_(
@@ -143,40 +174,30 @@ class AuthUser(BaseAuth):
 
 class AuthEnterprise(BaseAuth):
     @classmethod
-    async def registration(cls, db: session, form: dict, image=None):
-        if image:
-            logo = {
-                'path': 'media/enterprises/',
-                'type': 'logo',
-                'image': image,
-            }
-        else:
-            logo = None
-        data = await cls.generate_data(form, logo)
-        await cls.insert_data(db, Enterprise, data)
-
+    async def registration(
+        cls, 
+        db: db_session,
+        form: EnterpriseRegister,
+        image: UploadFile | None = None,
+    ) -> dict:
+        await super().registration(db, form, 'media/enterprises/', Enterprise, image)
         # run celery tasks
-        send_confirmation_letter.apply_async(args=[
-            form.name,
-            form.email,
-            'enterprises',
-        ])
+        token_data = {'name': form.name}
+        recipient = form.email
+        url = 'users'
+        send_confirmation_letter.apply_async(args=[token_data, recipient, url])
         delete_inactive_enterprise.apply_async(args=[form.name])
         return {'status': 'Check your email for confirmation letter.'}
 
     @staticmethod
-    async def confirm_registration(token: str, db: session):
+    async def confirm_registration(token: str, db: db_session) -> dict:
         data = JWT.decode_token(token)
         name = data['name']
 
         query = select(Enterprise).where(Enterprise.name == name)
         enterprise = (await db.execute(query)).scalar()
-        print(enterprise)
         if not enterprise or enterprise.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail='Enterprise is not found or already exists.'
-            )
+            raise ObjectExistsException('User')
 
         await db.execute(
             update(Enterprise).
@@ -187,11 +208,20 @@ class AuthEnterprise(BaseAuth):
         return {'status': 'Enterprise has been created successfully'}
 
     @classmethod
-    async def authenticate(cls, db: session, email: str, password: str):
-        enterprise = (await db.execute(
+    async def authenticate(
+        cls,
+        db: db_session,
+        email: str,
+        password: str
+    ) -> Enterprise:
+        query = (
             select(Enterprise).
-            where(Enterprise.email == email, Enterprise.is_active == True)
-        )).scalar()
+            where(and_(
+                Enterprise.email == email,
+                Enterprise.is_active == True,
+            ))
+        )
+        enterprise = (await db.execute(query)).scalar()
 
         cls.object_exists('email', enterprise)
         Password.check(password, enterprise.password)

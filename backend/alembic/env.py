@@ -22,6 +22,7 @@ from src.models.common import Base
 from src.models.enterprises import Enterprise
 from src.models.services import Service
 from src.models.users import User
+from src.models.chats import Chat
 
 target_metadata = Base.metadata
 

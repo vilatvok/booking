@@ -5,6 +5,7 @@ from sqlalchemy.orm import relationship, Mapped, DeclarativeBase, mapped_column
 # # when: Mapped[list['Feedback']]
 if TYPE_CHECKING:
     from src.models.services import Service
+    from src.models.chats import Chat, Message
 
 
 class Base(DeclarativeBase):
@@ -19,7 +20,15 @@ class Owner(Base):
         back_populates='owner',
         cascade='all, delete-orphan',
     )
-
+    chats: Mapped[list['Chat']] = relationship(
+        primaryjoin="or_(Chat.first_user_id == Owner.id, Chat.second_user_id == Owner.id)",
+        viewonly=True,
+    )
+    messages: Mapped[list['Message']] = relationship(
+        back_populates='sender',
+        viewonly=True,
+    )
+    
     __mapper_args__ = {
         'polymorphic_identity': 'owner',
         'polymorphic_on': 'discriminator'

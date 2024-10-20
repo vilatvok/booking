@@ -57,6 +57,7 @@ class ServiceCreate(BaseModel):
 class ServiceSchema(ServiceCreate):
     id: int
     owner: str
+    owner_model: str
     images: list[ImageSchema]
 
 

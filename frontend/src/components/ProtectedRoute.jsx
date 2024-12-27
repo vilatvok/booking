@@ -41,22 +41,18 @@ function ProtectedRoute() {
       await refreshToken();
       return;
     }
-    const objName = token.name;
-    const objType = token.obj;
-    const stmt = ["user", "google_user"].includes(objType);
-    const url = stmt ? `users/${objName}` : `enterprises/${objName}`;
-
-    const isObj = await api
-      .get(url)
+    const username = token.username;
+    const userExists = await api
+      .get(`users/${username}`)
       .then((res) => res.status)
       .catch((err) => console.log(err));
     
-    if (isObj !== 200) {
-      navigate("/users/login");
+    if (userExists !== 200) {
+      navigate("/auth/login");
     }
   };
 
-  return token ? <Outlet /> : <Navigate to="/users/login" />;
+  return token ? <Outlet /> : <Navigate to="/auth/login" />;
 }
 
 export default ProtectedRoute;

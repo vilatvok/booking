@@ -1,11 +1,20 @@
-import { useCurrentObj } from "../hooks/useCurrentObject";
+import { useEffect, useState } from "react";
+import { ACCESS_TOKEN } from "../data/constants";
+import { jwtDecode } from "jwt-decode";
+
 
 function Navigation() {
-  const currObj = useCurrentObj();
-  const objName = currObj?.name;
-  const objType = currObj?.obj;
-  const url = objType === "user" ? `/users/${objName}` : `/enterprises/${objName}`;
+  const [currUser, setCurrUser] = useState(null);
+  useEffect(() => {
+    const token = localStorage.getItem(ACCESS_TOKEN);
+    if (token) {
+      const decoded = jwtDecode(token);
+      setCurrUser(decoded);
+    }
+  }, []);
 
+  const username = currUser?.username;
+  const url = `/users/${username}`;
 
   return (
     <nav className="flex items-center justify-between flex-wrap bg-teal-500 p-6">
@@ -49,17 +58,17 @@ function Navigation() {
       </div>
       <div className="w-full block flex-grow lg:flex lg:items-center lg:w-auto">
         <div className="text-sm lg:flex-grow">
-          {!objName && (
+          {!username && (
             <>
               <a
-                href="register"
+                href="/auth/register"
                 className="block mt-4 lg:inline-block lg:mt-0 
                 text-teal-200 hover:text-white mr-4"
               >
                 Register
               </a>
               <a
-                href="login"
+                href="/auth/login"
                 className="block mt-4 lg:inline-block lg:mt-0 
                 text-teal-200 hover:text-white mr-4"
               >
@@ -67,14 +76,14 @@ function Navigation() {
               </a>
             </>
           )}
-          {objName && (
+          {username && (
             <>
               <a
                 href="/logout"
                 className="block mt-4 lg:inline-block lg:mt-0 
                 text-teal-200 hover:text-white mr-4"
               >
-                Logout {objName}
+                Logout {username}
               </a>
               <a
                 href={url}

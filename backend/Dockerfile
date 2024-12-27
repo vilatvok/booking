@@ -4,12 +4,9 @@ WORKDIR /backend
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONBUFFERED=1
-ENV PATH="/root/.local/bin:${PATH}"
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
-COPY pyproject.toml .
-RUN poetry install --no-root
+RUN pip install --upgrade pip
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
 COPY . .
-
-ENTRYPOINT ["poetry", "run"]

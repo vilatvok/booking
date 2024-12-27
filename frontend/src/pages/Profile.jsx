@@ -1,20 +1,20 @@
 import api from "../utils/api";
 import User from "../components/User";
-import Enterprise from "../components/Enterprise";
-import Service from "../components/Service";
+import Company from "../components/Company";
+import Offer from "../components/Offer";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 
-function UserService({ currUser }) {
+function UserOffers({ currUser }) {
   const [user, setUser] = useState([]);
-  const [services, setServices] = useState([]);
-  const objName = currUser;
+  const [offers, setOffers] = useState([]);
+  const username = currUser;
 
   useEffect(() => {
-    getUser(objName);
-    getServices(objName);
-  }, [objName]);
+    getUser(username);
+    getOffers(username);
+  }, [username]);
 
   const getUser = async (username) => {
     await api
@@ -24,15 +24,15 @@ function UserService({ currUser }) {
       .catch((err) => console.log(err));
   };
 
-  const getServices = async (username) => {
+  const getOffers = async (username) => {
     await api
-      .get(`/users/${username}/services`)
+      .get(`/users/${username}/offers`)
       .then((res) => res.data)
-      .then((data) => setServices(data))
+      .then((data) => setOffers(data))
       .catch((err) => console.log(err));
   };
 
-  const listServices = services.map((item) => {
+  const listOffers = offers.map((item) => {
     return (
       <div
         className="mx-3 mt-6 flex flex-col rounded-lg bg-white 
@@ -41,10 +41,10 @@ function UserService({ currUser }) {
         sm:shrink-0 sm:grow sm:basis-0"
         key={item.id}
       >
-        <Service
-          service={item}
-          onDelete={(u) => getServices(u)}
-          onUpdate={(u) => getServices(u)}
+        <Offer
+          offer={item}
+          onDelete={(u) => getOffers(u)}
+          onUpdate={(u) => getOffers(u)}
         />
       </div>
     );
@@ -54,39 +54,40 @@ function UserService({ currUser }) {
     <div className="m-5">
       <User user={user} onUpdate={(u) => getUser(u)} />
       <div className="grid-cols-1 sm:grid md:grid-cols-3 ">
-        {listServices}
+        {listOffers}
       </div>
     </div>
   );
 }
 
-function EnterpriseService({ currEnter }) {
-  const [enterprise, setEnterprise] = useState([]);
-  const [services, setServices] = useState([]);
-  const objName = currEnter;
+
+function CompanyOffers({ currEnter }) {
+  const [company, setCompany] = useState([]);
+  const [offers, setOffers] = useState([]);
+  const username = currEnter;
 
   useEffect(() => {
-    getEnterprise(objName);
-    getServices(objName);
-  }, [objName]);
+    getCompany(username);
+    getOffers(username);
+  }, [username]);
 
-  const getEnterprise = async (name) => {
+  const getCompany = async (name) => {
     await api
-      .get(`/enterprises/${name}`)
+      .get(`/companies/${name}`)
       .then((res) => res.data)
-      .then((data) => setEnterprise(data))
+      .then((data) => setCompany(data))
       .catch((err) => console.log(err));
   };
 
-  const getServices = async (name) => {
+  const getOffers = async (name) => {
     await api
-      .get(`/enterprises/${name}/services`)
+      .get(`/companies/${name}/offers`)
       .then((res) => res.data)
-      .then((data) => setServices(data))
+      .then((data) => setOffers(data))
       .catch((err) => console.log(err));
   };
 
-  const listServices = services.map((item) => {
+  const listOffers = offers.map((item) => {
     return (
       <div
         className="mx-3 mt-6 flex flex-col rounded-lg bg-white 
@@ -95,10 +96,10 @@ function EnterpriseService({ currEnter }) {
         sm:shrink-0 sm:grow sm:basis-0"
         key={item.id}
       >
-        <Service
-          service={item}
-          onDelete={(u) => getServices(u)}
-          onUpdate={(u) => getServices(u)}
+        <Offer
+          offer={item}
+          onDelete={(u) => getOffers(u)}
+          onUpdate={(u) => getOffers(u)}
         />
       </div>
     );
@@ -106,12 +107,12 @@ function EnterpriseService({ currEnter }) {
   return (
     <>
       <div className="m-5">
-        <Enterprise
-          enterprise={enterprise}
-          onUpdate={(u) => getEnterprise(u)}
+        <Company
+          company={company}
+          onUpdate={(u) => getCompany(u)}
         />
         <div className="grid-cols-1 sm:grid md:grid-cols-3 ">
-          {listServices}
+          {listOffers}
         </div>
       </div>
     </>
@@ -125,10 +126,10 @@ function Profile() {
   return (
     <div>
       {url && (
-        <UserService currUser={name} />
+        <UserOffers currUser={name} />
       )}
       {!url &&
-        <EnterpriseService currEnter={name} />
+        <CompanyOffers currEnter={name} />
       }
     </div>
   );

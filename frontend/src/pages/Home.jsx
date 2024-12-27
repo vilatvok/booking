@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
 import api from '../utils/api';
-import Service from '../components/Service';
+import Offer from '../components/Offer';
 
 
 function Home() {
-  const [services, setServices] = useState([]);
+  const [offers, setOffers] = useState([]);
 
   useEffect(() => {
-    getServices();
+    getOffers();
   }, [])
 
-  const getServices = async () => {
+  const getOffers = async () => {
     await api
-      .get('/services')
+      .get('/offers')
       .then((res) => res.data)
-      .then((data) => setServices(data))
+      .then((data) => setOffers(data))
       .catch((err) => console.error(err));
   }
 
-  const listServices = services.map((item) => {
+  const listOffers = offers.map((item) => {
     return (
       <div
         className="mx-3 mt-6 flex flex-col rounded-lg bg-white 
@@ -27,18 +27,14 @@ function Home() {
         sm:shrink-0 sm:grow sm:basis-0"
         key={item.id}
       >
-        <Service
-          service={item}
-          onDelete={(u) => getServices(u)}
-          onUpdate={(u) => getServices(u)}
-        />
+        <Offer offer={item}/>
       </div>
     );
   });
 
   return (
     <div className="grid-cols-1 sm:grid md:grid-cols-3 ">
-      {listServices}
+      {listOffers}
     </div>
   )
 }

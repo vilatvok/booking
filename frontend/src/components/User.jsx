@@ -2,7 +2,7 @@ import api from "../utils/api";
 import { useEffect, useState } from "react";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../data/constants";
 import { useNavigate } from "react-router-dom";
-import { useCurrentObj } from "../hooks/useCurrentObject";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 
 function User({ user, onUpdate }) {
@@ -10,9 +10,10 @@ function User({ user, onUpdate }) {
   const [email, setEmail] = useState("");
   const [avatar, setAvatar] = useState(null);
   const [editing, setEditing] = useState(false);
-  const currUser = useCurrentObj().name;
-  const isCurrUser = currUser === user.username;
+  const currUser = useCurrentUser().username;
   const navigate = useNavigate();
+  const isCurrUser = currUser === user.username;
+  const avatarUrl = encodeURI(`http://localhost:8000/${user.avatar}`);
 
   useEffect(() => {
     setUsername(user.username);
@@ -65,7 +66,7 @@ function User({ user, onUpdate }) {
 
   const handleChatRedirect = async () => {
     await api
-      .post("/chats/id", { obj_id: user.id, obj_type: "user" })
+      .get("/chats/id", { params: { user_id: user.id } })
       .then(async (res) => {
         if (res.status === 200) {
           await api
@@ -73,7 +74,6 @@ function User({ user, onUpdate }) {
             .then((res) => navigate(`/chats/${res.data.id}`))
             .catch((err) => console.log(err));
         }
-          
       })
       .catch(async (err) => {
         await api
@@ -91,7 +91,7 @@ function User({ user, onUpdate }) {
       <div
         className="h-48 lg:h-48 lg:w-48 flex-none bg-cover 
         rounded-t lg:rounded-t-none lg:rounded-l text-center overflow-hidden"
-        style={{ backgroundImage: `url(http://localhost:8000/${user.avatar})` }}
+        style={{ backgroundImage: `url('${avatarUrl}')` }}
       ></div>
       <div
         className="border-r border-b border-l border-gray-400 lg:border-l-0 lg:border-t 
@@ -106,8 +106,33 @@ function User({ user, onUpdate }) {
           {isCurrUser ? (
             <>
               <button
-                onClick={() => setEditing(!editing)}
+                onClick={() => navigate('/settings/')}
                 className="inline-flex items-center px-3 py-2 text-sm font-medium 
+                text-center text-white bg-teal-500
+                rounded-lg hover:bg-teal-600 focus:ring-4 focus:outline-none 
+                focus:ring-blue-300 dark:bg-teal-500
+                dark:hover:bg-teal-600 dark:focus:ring-blue-800"
+              >
+                Settings
+                <svg
+                  className="rtl:rotate-180 w-3.5 h-3.5 ms-2"
+                  aria-hidden="true"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 14 10"
+                >
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M1 5h12m0 0L9 1m4 4L9 9"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => setEditing(!editing)}
+                className="ms-2 inline-flex items-center px-3 py-2 text-sm font-medium 
                 text-center text-white bg-teal-500
                 rounded-lg hover:bg-teal-600 focus:ring-4 focus:outline-none 
                 focus:ring-blue-300 dark:bg-teal-500
@@ -131,7 +156,7 @@ function User({ user, onUpdate }) {
                 </svg>
               </button>
               <button
-                onClick={() => navigate("/create-service")}
+                onClick={() => navigate("/offers")}
                 className="ms-2 inline-flex items-center px-3 py-2 text-sm 
                 font-medium text-center text-white bg-teal-500
                 rounded-lg hover:bg-teal-600 focus:ring-4 focus:outline-none 

@@ -15,7 +15,7 @@ function PasswordChange() {
     };
   
     try {
-      const res = await api.put("/settings/password", data);
+      const res = await api.put("/users/password", data);
       if (res.status === 202) {
         console.log("Password updated");
         navigate("/");

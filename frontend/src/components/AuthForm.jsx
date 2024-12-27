@@ -5,8 +5,6 @@ import { useAuth } from "../hooks/AuthProvider";
 function AuthForm({
   fields,
   handleSubmit,
-  formType,
-  setFormType,
   methodType,
   googleAuth,
 }) {
@@ -46,56 +44,22 @@ function AuthForm({
             >
               {methodType === "register" ? "Register" : "Login"}
             </button>
-            {formType === "user" && (
-              <button
-                className="bg-teal-500 hover:bg-blue-700 text-white 
-                font-bold py-2 px-4 rounded 
-                focus:outline-none focus:shadow-outline"
-                onClick={googleAuth}
-              >
-                Google
-              </button>
-            )}
+            <button
+              className="bg-teal-500 hover:bg-blue-700 text-white 
+              font-bold py-2 px-4 rounded 
+              focus:outline-none focus:shadow-outline"
+              onClick={googleAuth}
+            >
+              Google
+            </button>
           </div>
           {methodType === "login" && (
             <div className="mt-4 flex items-center justify-center">
-              <a
-                href={
-                  formType === "user" ? "/users/login" : "/enterprises/login"
-                }
-                className="text-primary focus:outline-none dark:text-primary-400"
-                onClick={() =>
-                  setFormType(formType === "user" ? "enterprise" : "user")
-                }
-              >
-                {formType === "user"
-                  ? "Login as an enterpise?"
-                  : "Login as a user?"}
-              </a>
               <a
                 href="/password-reset"
                 className="ms-2 text-primary focus:outline-none dark:text-primary-400"
               >
                 Forgot password?
-              </a>
-            </div>
-          )}
-          {methodType === "register" && (
-            <div className="mt-4 flex items-center justify-center">
-              <a
-                href={
-                  formType === "user"
-                    ? "/users/register"
-                    : "/enterprises/register"
-                }
-                className="text-primary focus:outline-none dark:text-primary-400"
-                onClick={() =>
-                  setFormType(formType === "user" ? "enterprise" : "user")
-                }
-              >
-                {formType === "user"
-                  ? "Register as an enterprise?"
-                  : "Register as a user?"}
               </a>
             </div>
           )}
@@ -108,6 +72,7 @@ function AuthForm({
   );
 }
 
+
 function HandleForm({ route, method, googleData }) {
   const auth = useAuth();
   const [username, setUsername] = useState("");
@@ -117,19 +82,14 @@ function HandleForm({ route, method, googleData }) {
 
   // google data
   const [googleId, setGoogleId] = useState("");
-
-  // enterprise data
-  const [name, setName] = useState("");
-  const [owner, setOwner] = useState("");
-
-  const [formType, setFormType] = useState(null);
   const [methodType, setMethodType] = useState(null);
 
   useEffect(() => {
     if (googleData) {
-      if (googleData.email && googleData.google_id) {
+      if (googleData.email && googleData.google_id && googleData.avatar) {
         setEmail(googleData.email);
         setGoogleId(googleData.google_id);
+        setAvatar(googleData.avatar);
       }
     }
   }, [googleData]);
@@ -140,56 +100,33 @@ function HandleForm({ route, method, googleData }) {
     } else {
       setMethodType("register");
     }
-
-    if (route.includes("users")) {
-      setFormType("user");
-    } else {
-      setFormType("enterprise");
-    }
   }, [method, route]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const form = new FormData();
-      let obj;
+      const form_data = new FormData();
+      form_data.append("username", username);
+
       switch (method) {
         case "login":
-          form.append("username", username);
-          form.append("password", password);
+          form_data.append("password", password);
           if (username !== "" && password !== "") {
-            auth.login(route, form);
+            auth.login(route, form_data);
           }
           break;
         case "register":
+          form_data.append("email", email);
+          if (avatar) form_data.append("avatar", avatar);
           if (googleId) {
-            obj = {
-              username: username,
-              email: email,
-              social_id: googleId,
-            };
-            if (avatar) form.append("avatar", avatar);
-          } else if (route === "/enterprises/register") {
-            obj = {
-              name: name,
-              owner: owner,
-              email: email,
-              password: password,
-            };
-            if (avatar) form.append("logo", avatar);
+            form_data.append('social_id', googleId);
           } else {
-            obj = {
-              username: username,
-              email: email,
-              password: password,
-            };
-            if (avatar) form.append("avatar", avatar);
+            form_data.append('password', password);
           }
-          form.append("form", JSON.stringify(obj));
 
           // only specific case for user registration
           if (username !== "" && email !== "" && password !== "") {
-            auth.register(route, form, formType);
+            auth.register(route, form_data);
           }
           break;
         default:
@@ -202,7 +139,7 @@ function HandleForm({ route, method, googleData }) {
 
   const googleAuth = async () => {
     await api
-      .get("/google-auth/link")
+      .get("/auth/google-auth/link")
       .then((res) => {
         window.location.href = res.data.url;
       })
@@ -212,22 +149,27 @@ function HandleForm({ route, method, googleData }) {
   };
 
   const fields = [];
-  if (route === "/enterprises/register") {
+
+  fields.push(
+    {
+      id: "username",
+      label: "Username",
+      type: "text",
+      placeholder: "Username",
+      onChange: (e) => setUsername(e.target.value),
+    },
+    {
+      id: "password",
+      label: "Password",
+      type: "password",
+      placeholder: "********",
+      onChange: (e) => setPassword(e.target.value),
+    }
+  );
+
+  console.log(route)
+  if (route === "/auth/register") {
     fields.push(
-      {
-        id: "name",
-        label: "Name",
-        type: "text",
-        placeholder: "Name",
-        onChange: (e) => setName(e.target.value),
-      },
-      {
-        id: "owner",
-        label: "Owner",
-        type: "text",
-        placeholder: "Owner",
-        onChange: (e) => setOwner(e.target.value),
-      },
       {
         id: "email",
         label: "Email",
@@ -236,94 +178,15 @@ function HandleForm({ route, method, googleData }) {
         onChange: (e) => setEmail(e.target.value),
       },
       {
-        id: "password",
-        label: "Password",
-        type: "password",
-        placeholder: "********",
-        onChange: (e) => setPassword(e.target.value),
-      },
-      {
         id: "avatar",
         label: "Avatar",
         type: "file",
         onChange: (e) => setAvatar(e.target.files[0]),
-      }
-    );
-  } else if (route === "/enterprises/login") {
-    fields.push(
-      {
-        id: "username",
-        label: "Email",
-        type: "text",
-        placeholder: "Email",
-        onChange: (e) => setUsername(e.target.value),
-      },
-      {
-        id: "password",
-        label: "Password",
-        type: "password",
-        placeholder: "********",
-        onChange: (e) => setPassword(e.target.value),
-      }
-    );
-  } else if (route === "/users/register") {
-    fields.push(
-      {
-        id: "username",
-        label: "Username",
-        type: "text",
-        placeholder: "Username",
-        onChange: (e) => setUsername(e.target.value),
-      },
-      {
-        id: "email",
-        label: "Email",
-        type: "email",
-        placeholder: "Email",
-        onChange: (e) => setEmail(e.target.value),
-      },
-      {
-        id: "password",
-        label: "Password",
-        type: "password",
-        placeholder: "********",
-        onChange: (e) => setPassword(e.target.value),
-      },
-      {
-        id: "avatar",
-        label: "Avatar",
-        type: "file",
-        onChange: (e) => setAvatar(e.target.files[0]),
-      }
-    );
-  } else {
-    fields.push(
-      {
-        id: "username",
-        label: "Username",
-        type: "text",
-        placeholder: "Username",
-        onChange: (e) => setUsername(e.target.value),
-      },
-      {
-        id: "password",
-        label: "Password",
-        type: "password",
-        placeholder: "********",
-        onChange: (e) => setPassword(e.target.value),
       }
     );
   }
-
   if (googleId) {
     fields.push(
-      {
-        id: "username",
-        label: "Username",
-        type: "text",
-        placeholder: "Username",
-        onChange: (e) => setUsername(e.target.value),
-      },
       {
         id: "email",
         label: "Email",
@@ -331,7 +194,7 @@ function HandleForm({ route, method, googleData }) {
         placeholder: "Email",
         value: email,
         disabled: true,
-      }
+      },
     );
   }
 
@@ -339,9 +202,7 @@ function HandleForm({ route, method, googleData }) {
     <AuthForm
       fields={fields}
       handleSubmit={handleSubmit}
-      formType={formType}
       methodType={methodType}
-      setFormType={setFormType}
       googleAuth={googleAuth}
     />
   );

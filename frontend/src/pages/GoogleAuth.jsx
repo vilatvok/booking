@@ -14,7 +14,7 @@ function GoogleAuth() {
   const authAction = async () => {
     const is_param = params.get("code");
     if (is_param !== null) {
-      let url = "/google-auth/login?code=" + is_param;
+      let url = "/auth/google-auth/login?code=" + is_param;
       await auth.googleLogin(url)
     }
   };

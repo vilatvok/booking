@@ -1,6 +1,6 @@
 import api from "../utils/api";
 import { useState, createContext, useContext } from "react";
-import { useCurrentObj } from "../hooks/useCurrentObject";
+import { useCurrentUser } from "./useCurrentUser";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "../data/constants";
 import { useNavigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
@@ -13,8 +13,8 @@ export const useAuth = () => {
 };
 
 function AuthProvider({ children }) {
-  const authenticatedObject = useCurrentObj();
-  const [token, setToken] = useState(authenticatedObject);
+  const user = useCurrentUser();
+  const [token, setToken] = useState(user);
   const navigate = useNavigate();
 
   const login = async (route, data) => {
@@ -54,23 +54,20 @@ function AuthProvider({ children }) {
           const googleData = {
             email: res.data.email,
             google_id: res.data.google_id,
+            avatar: res.data.avatar,
           }
-          navigate("/users/register", { state: { googleData } });
+          navigate("/auth/register", { state: { googleData } });
         }
       })
       .catch((err) => { console.log(err) });
   };
 
-  const register = async (route, data, formType) => {
+  const register = async (route, data) => {
     await api
     .post(route, data)
     .then((res) => {
       if ([200, 201].includes(res.status)) {
-        if (formType === "enterprise") {
-          navigate("/enterprises/login");
-        } else {
-          navigate("/users/login");
-        }
+        navigate("/auth/login");
       }
     })
     .catch((err) => {
